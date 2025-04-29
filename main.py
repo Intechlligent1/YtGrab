@@ -5,12 +5,10 @@ import streamlit as st
 import yt_dlp
 from datetime import datetime
 
-# Constants
 HISTORY_FILE = "history.json"
 DEFAULT_PATH = str(Path.home() / "Downloads" / "YouTube")
 
-# Streamlit Config
-st.set_page_config(page_title="🎥 YouTube Downloader", page_icon="📥", layout="wide")
+st.set_page_config(page_title="🎥 YT Grab", page_icon="🎥", layout="wide")
 
 # Load Download History
 def load_history():
@@ -33,14 +31,13 @@ def add_to_history(title, output_path, type_):
     })
     save_history(history)
 
-# Metadata Fetcher
 def get_video_info(url):
     ydl_opts = {"quiet": True, "skip_download": True}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         return info
 
-# Downloader
+
 def download_with_ytdlp(video_url, quality, output_path, is_playlist=False):
     os.makedirs(output_path, exist_ok=True)
     format_option = resolution_map.get(quality, resolution_map["1080p"])
@@ -78,7 +75,6 @@ resolution_map = {
     '144p': 'bestvideo[height<=144][ext=mp4]+bestaudio[ext=m4a]/best[height<=144][ext=mp4]/best[height<=144]',
 }
 
-# Sidebar
 with st.sidebar:
     st.header("📜 Download History")
     history = load_history()
@@ -89,7 +85,6 @@ with st.sidebar:
     else:
         st.info("No downloads yet.")
 
-# Main UI
 st.title("📥 YouTube Downloader with yt-dlp")
 
 url = st.text_input("Enter YouTube Video or Playlist URL")
