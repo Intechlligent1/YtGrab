@@ -327,7 +327,7 @@ if st.button("🚀 Start Download"):
                                 f'<strong>Download location:</strong><br>'
                                 f'<code>{download_path}</code></div>', 
                                 unsafe_allow_html=True)
-                    st.balloons()
+                    # st.balloons()
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
 
