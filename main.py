@@ -3,10 +3,8 @@ import yt_dlp
 import streamlit as st
 from pathlib import Path
 
-# Set up configuration
 st.set_page_config(page_title="YT Grab Pro", page_icon="🚀", layout="centered")
 
-# Premium CSS styling with animations
 st.markdown("""
     <style>
         @keyframes gradient {
@@ -208,40 +206,32 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Get download directory
 def get_download_dir():
     """
     Returns the default downloads directory for the user's operating system
     """
-    # First try to get standard Downloads folder
-    if os.name == 'nt':  # Windows
+    if os.name == 'nt': 
         download_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
     elif os.name == 'posix':  # macOS, Linux, and other Unix-like systems
         download_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
     else:
-        # Fallback to Videos folder in home directory
         download_dir = os.path.join(os.path.expanduser('~'), 'Videos')
     
-    # Create the directory if it doesn't exist
     Path(download_dir).mkdir(exist_ok=True)
     
-    # Create a Videos subdirectory in the downloads folder
     videos_dir = os.path.join(download_dir, 'Yt Grab ')
     Path(videos_dir).mkdir(exist_ok=True)
     
     return videos_dir
 
-# Set up download directory
 DOWNLOAD_PATH = get_download_dir()
 
-# App UI
 st.markdown('<div class="header"><h1 style="margin:0;font-size:2.5rem;">🚀 YT Grab Pro</h1><p style="margin:0.5rem 0 0;font-size:1.1rem;">Download Videos from Popular Platforms</p></div>', unsafe_allow_html=True)
 st.markdown("<div class='main'>", unsafe_allow_html=True)
 
 st.markdown("### 📥 Download Media Content")
 url = st.text_input("Paste URL here", placeholder="📌 Example: https://youtube.com/watch?v=... or https://tiktok.com/@user/video/...")
 
-# Save location display and option
 st.markdown(f"**Save location:** {DOWNLOAD_PATH}")
 use_custom_path = st.checkbox("Use custom save location")
 
@@ -258,7 +248,6 @@ if use_custom_path:
 else:
     download_path = DOWNLOAD_PATH
 
-# Detect platform automatically
 platform = None
 if url:
     if "youtube.com" in url or "youtu.be" in url:
@@ -307,7 +296,7 @@ if st.button("🚀 Start Download"):
                         "preferredquality": "192",
                     }],
                 })
-            else:  # Best Video
+            else: 
                 ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
                 
         elif platform == "TikTok":
@@ -342,7 +331,6 @@ if st.button("🚀 Start Download"):
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
 
-# Footer with platform detection
 st.markdown(f"""
     <div class="footer">
         <div class="platforms">
