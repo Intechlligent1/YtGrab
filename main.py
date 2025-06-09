@@ -147,6 +147,16 @@ st.markdown("""
             animation: slideIn 0.5s ease-out;
         }
         
+        .path-info {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border-left: 4px solid var(--primary);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
         .footer {
             text-align: center;
             padding: 2rem 0;
@@ -208,23 +218,53 @@ st.markdown("""
 
 def get_download_dir():
     """
-    Returns the default downloads directory for the user's operating system
+    Returns a well-defined downloads directory for the user's operating system
     """
-    if os.name == 'nt': 
-        download_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
-    elif os.name == 'posix':  # macOS, Linux, and other Unix-like systems
-        download_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
-    else:
-        download_dir = os.path.join(os.path.expanduser('~'), 'Videos')
+    # Get user's home directory
+    home_dir = Path.home()
     
-    Path(download_dir).mkdir(exist_ok=True)
+    # Define the download directory path
+    if os.name == 'nt':  # Windows
+        # Try common Windows download locations
+        downloads_dir = home_dir / 'Downloads'
+        if not downloads_dir.exists():
+            downloads_dir = home_dir / 'Desktop'
+    else:  # macOS, Linux, and other Unix-like systems
+        downloads_dir = home_dir / 'Downloads'
+        if not downloads_dir.exists():
+            downloads_dir = home_dir / 'Desktop'
     
-    videos_dir = os.path.join(download_dir, 'Yt Grab ')
-    Path(videos_dir).mkdir(exist_ok=True)
+    # Create downloads directory if it doesn't exist
+    downloads_dir.mkdir(exist_ok=True)
     
-    return videos_dir
+    # Create YT Grab Pro subfolder
+    yt_grab_dir = downloads_dir / 'YT_Grab_Pro'
+    yt_grab_dir.mkdir(exist_ok=True)
+    
+    return str(yt_grab_dir)
 
-DOWNLOAD_PATH = get_download_dir()
+def validate_custom_path(path_str):
+    """
+    Validates if a custom path exists and is writable
+    """
+    try:
+        path = Path(path_str)
+        if path.exists() and path.is_dir():
+            # Test if we can write to the directory
+            test_file = path / '.test_write'
+            try:
+                test_file.touch()
+                test_file.unlink()
+                return True, str(path)
+            except PermissionError:
+                return False, "Permission denied - cannot write to this directory"
+        else:
+            return False, "Directory does not exist"
+    except Exception as e:
+        return False, f"Invalid path: {str(e)}"
+
+# Initialize download path
+DEFAULT_DOWNLOAD_PATH = get_download_dir()
 
 st.markdown('<div class="header"><h1 style="margin:0;font-size:2.5rem;">🚀 YT Grab Pro</h1><p style="margin:0.5rem 0 0;font-size:1.1rem;">Download Videos from Popular Platforms</p></div>', unsafe_allow_html=True)
 st.markdown("<div class='main'>", unsafe_allow_html=True)
@@ -232,28 +272,42 @@ st.markdown("<div class='main'>", unsafe_allow_html=True)
 st.markdown("### 📥 Download Media Content")
 url = st.text_input("Paste URL here", placeholder="📌 Example: https://youtube.com/watch?v=... or https://tiktok.com/@user/video/...")
 
-st.markdown(f"**Save location:** {DOWNLOAD_PATH}")
+# Download path configuration
+st.markdown("### 📂 Download Location")
+st.markdown(f'<div class="path-info">📁 Default: {DEFAULT_DOWNLOAD_PATH}</div>', unsafe_allow_html=True)
+
 use_custom_path = st.checkbox("Use custom save location")
 
 if use_custom_path:
-    custom_path = st.text_input("Custom save location (full path):", 
-                               value=DOWNLOAD_PATH,
-                               help="Enter a valid path on your device where files should be saved")
-    if custom_path and Path(custom_path).exists():
-        download_path = custom_path
+    custom_path = st.text_input("Custom save location:", 
+                               value=DEFAULT_DOWNLOAD_PATH,
+                               help="Enter a valid directory path where files should be saved")
+    
+    if custom_path:
+        valid, message = validate_custom_path(custom_path)
+        if valid:
+            download_path = message
+            st.success(f"✅ Valid path: {download_path}")
+        else:
+            st.error(f"❌ {message}")
+            st.warning("Using default location instead.")
+            download_path = DEFAULT_DOWNLOAD_PATH
     else:
-        if custom_path:
-            st.warning("Path does not exist. Will use default location.")
-        download_path = DOWNLOAD_PATH
+        download_path = DEFAULT_DOWNLOAD_PATH
 else:
-    download_path = DOWNLOAD_PATH
+    download_path = DEFAULT_DOWNLOAD_PATH
 
+# Platform detection
 platform = None
 if url:
     if "youtube.com" in url or "youtu.be" in url:
         platform = "YouTube"
     elif "tiktok.com" in url:
         platform = "TikTok"
+    elif "instagram.com" in url:
+        platform = "Instagram"
+    elif "twitter.com" in url or "x.com" in url:
+        platform = "Twitter/X"
 
 format_choice = st.selectbox(
     "🎚️ Select Format",
@@ -265,79 +319,91 @@ if st.button("🚀 Start Download"):
     if not url:
         st.error("Please enter a valid URL.")
     else:
+        # Ensure download directory exists
+        Path(download_path).mkdir(parents=True, exist_ok=True)
+        
         ydl_opts = {
             "outtmpl": f"{download_path}/%(title)s.%(ext)s",
             "quiet": True,
-            "no_warnings": True
+            "no_warnings": True,
+            "restrictfilenames": True,  # Avoid special characters in filenames
         }
         
-        if platform == "YouTube":
-            if format_choice == "Best Audio":
-                ydl_opts.update({
-                    "format": "bestaudio/best",
-                    "postprocessors": [{
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": "mp3",
-                        "preferredquality": "192",
-                    }],
-                })
-            elif format_choice == "MP4 720p":
-                ydl_opts["format"] = "bestvideo[height<=720]+bestaudio/best"
-                ydl_opts["merge_output_format"] = "mp4"
-            elif format_choice == "MP4 480p":
-                ydl_opts["format"] = "bestvideo[height<=480]+bestaudio/best"
-                ydl_opts["merge_output_format"] = "mp4"
-            elif format_choice == "MP3":
-                ydl_opts.update({
-                    "format": "bestaudio/best",
-                    "postprocessors": [{
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": "mp3",
-                        "preferredquality": "192",
-                    }],
-                })
-            else: 
-                ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
-                
-        elif platform == "TikTok":
-            if format_choice in ["Best Audio", "MP3"]:
-                ydl_opts.update({
-                    "format": "bestaudio/best",
-                    "postprocessors": [{
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": "mp3",
-                        "preferredquality": "192",
-                    }],
-                })
-            else:
-                ydl_opts["format"] = "best"
-        else:
-            st.error("Unsupported platform. Currently supports YouTube and TikTok.")
-            st.stop()
+        # Format-specific configurations
+        if format_choice == "Best Audio":
+            ydl_opts.update({
+                "format": "bestaudio/best",
+                "postprocessors": [{
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }],
+            })
+        elif format_choice == "MP4 720p":
+            ydl_opts["format"] = "bestvideo[height<=720]+bestaudio/best[height<=720]"
+            ydl_opts["merge_output_format"] = "mp4"
+        elif format_choice == "MP4 480p":
+            ydl_opts["format"] = "bestvideo[height<=480]+bestaudio/best[height<=480]"
+            ydl_opts["merge_output_format"] = "mp4"
+        elif format_choice == "MP3":
+            ydl_opts.update({
+                "format": "bestaudio/best",
+                "postprocessors": [{
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }],
+            })
+        else:  # Best Video
+            ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 
         with st.spinner("⏳ Downloading... This might take a moment"):
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
-                    filename = ydl.prepare_filename(info)
-                    st.success("🎉 Download completed!")
-                    st.markdown(f'<div class="download-info">'
-                                f'<strong>Saved file:</strong><br>'
-                                f'<code>{filename}</code><br><br>'
-                                f'<strong>Download location:</strong><br>'
-                                f'<code>{download_path}</code></div>', 
-                                unsafe_allow_html=True)
-                    # st.balloons()
+                    # Extract info first to get the title
+                    info = ydl.extract_info(url, download=False)
+                    title = info.get('title', 'Unknown')
+                    
+                    # Now download
+                    ydl.download([url])
+                    
+                    st.success("🎉 Download completed successfully!")
+                    
+                    # Show download information
+                    st.markdown(f'''
+                    <div class="download-info">
+                        <h4>📁 Download Complete!</h4>
+                        <p><strong>Title:</strong> {title}</p>
+                        <p><strong>Format:</strong> {format_choice}</p>
+                        <p><strong>Platform:</strong> {platform or "Unknown"}</p>
+                        <p><strong>Saved to:</strong></p>
+                        <code>{download_path}</code>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                    
+                    # Show files in directory
+                    try:
+                        files = list(Path(download_path).glob("*"))
+                        if files:
+                            st.markdown("### 📋 Recent Downloads")
+                            for file in sorted(files, key=lambda x: x.stat().st_mtime, reverse=True)[:5]:
+                                if file.is_file():
+                                    file_size = file.stat().st_size / (1024 * 1024)  # Convert to MB
+                                    st.write(f"📄 {file.name} ({file_size:.1f} MB)")
+                    except Exception:
+                        pass  # Don't show error if we can't list files
+                        
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"❌ Download failed: {str(e)}")
+                st.info("💡 Try checking if the URL is valid and accessible.")
 
 st.markdown(f"""
     <div class="footer">
         <div class="platforms">
             <span class="platform-badge {'active' if platform == 'YouTube' else ''}">YouTube</span>
             <span class="platform-badge {'active' if platform == 'TikTok' else ''}">TikTok</span>
-            <span class="platform-badge">Instagram</span>
-            <span class="platform-badge">Twitter/X</span>
+            <span class="platform-badge {'active' if platform == 'Instagram' else ''}">Instagram</span>
+            <span class="platform-badge {'active' if platform == 'Twitter/X' else ''}">Twitter/X</span>
             <span class="platform-badge">Facebook</span>
         </div>
         <p style="margin:1rem 0">Made with ❤️ by IntechX</p>
@@ -352,7 +418,7 @@ st.markdown(f"""
             This tool is for educational purposes only.
         </p>
     </div>
-    <div class="watermark">v2.1.0</div>
+    <div class="watermark">v2.2.0</div>
 """, unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
