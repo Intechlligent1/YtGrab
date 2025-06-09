@@ -218,30 +218,11 @@ st.markdown("""
 
 def get_download_dir():
     """
-    Returns a well-defined downloads directory for the user's operating system
+    Returns a fixed download directory in the user's Videos folder
     """
-    # Get user's home directory
-    home_dir = Path.home()
-    
-    # Define the download directory path
-    if os.name == 'nt':  # Windows
-        # Try common Windows download locations
-        downloads_dir = home_dir / 'Downloads'
-        if not downloads_dir.exists():
-            downloads_dir = home_dir / 'Desktop'
-    else:  # macOS, Linux, and other Unix-like systems
-        downloads_dir = home_dir / 'Downloads'
-        if not downloads_dir.exists():
-            downloads_dir = home_dir / 'Desktop'
-    
-    # Create downloads directory if it doesn't exist
-    downloads_dir.mkdir(exist_ok=True)
-    
-    # Create YT Grab Pro subfolder
-    yt_grab_dir = downloads_dir / 'YT_Grab_Pro'
-    yt_grab_dir.mkdir(exist_ok=True)
-    
-    return str(yt_grab_dir)
+    download_path = Path.home() / "Videos" / "IntechDownloader"
+    download_path.mkdir(parents=True, exist_ok=True)  # Create directory if it doesn't exist
+    return str(download_path)
 
 def validate_custom_path(path_str):
     """
